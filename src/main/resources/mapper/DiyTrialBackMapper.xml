@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.haier.diy.web.mapper.DiyTrialBackMapper">
+	<resultMap id="diyTrialBackMap" type="com.bcc.test.trial.domain.DiyTrial">
+		<id column="id" property="id" jdbcType="BIGINT" />
+		<result column="product_id" property="productId" jdbcType="BIGINT" />
+		<result column="trial_num" property="trialNum" jdbcType="INTEGER" />
+		<result column="pc_cover" property="pcCover" jdbcType="VARCHAR" />
+		<result column="m_cover" property="mCover" jdbcType="VARCHAR" />
+		<result column="base" property="base" jdbcType="INTEGER" />
+		<result column="start_time" property="startTime" jdbcType="TIMESTAMP" />
+		<result column="preheat_end_time" property="preheatEndTime" jdbcType="TIMESTAMP" />
+		<result column="apply_end_time" property="applyEndTime" jdbcType="TIMESTAMP" />
+		<result column="end_time" property="endTime" jdbcType="TIMESTAMP" />
+		<result column="is_charge_deposit" property="isChargeDeposit" jdbcType="VARCHAR" />
+		<result column="rule" property="rule" jdbcType="VARCHAR" />
+		<result column="status" property="status" jdbcType="INTEGER" />
+		<result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
+		<result column="sort" property="sort" jdbcType="INTEGER" />
+	</resultMap>
+	<resultMap id="diyTrialSupperBackMap" type="com.bcc.test.trialBack.domain.DiyTrialSupper" extends="diyTrialBackMap">
+		<result column="product_name" property="productName" jdbcType="VARCHAR" />
+		<result column="trial_user_num" property="trialUserNum" jdbcType="INTEGER" />
+		<result column="report_num" property="reportNum" jdbcType="INTEGER" />
+		<result column="price" property="price" jdbcType="DECIMAL" />
+		<collection property="diyTrialDataList" ofType="com.bcc.test.trial.domain.DiyTrialData">
+				<result column="data_id" property="id" jdbcType="BIGINT"/>
+				<result column="trial_id" property="trialId" jdbcType="BIGINT"/>
+				<result column="relation_id" property="relationId" jdbcType="BIGINT"/>
+				<result column="cover" property="cover" jdbcType="VARCHAR"/>
+				<result column="pro_name" property="proName" jdbcType="VARCHAR"/>
+				<result column="data_create_time" property="createTime" jdbcType="TIMESTAMP"/>
+		</collection>
+	</resultMap>	
+	<!-- 获取试用产品数量 -->
+	<select id="getTrialCount"  resultType="Integer">
+		SELECT count(*) from diy_trial t;
+	</select>
+	
+	<!-- 分页获取试用产品列表 -->
+	<select id="getTrialByPage" parameterType="java.lang.Object" resultMap="diyTrialSupperBackMap">
+	  	SELECT
+			t.id,
+			t.is_charge_deposit,
+			t.sort,
+			t.start_time,
+			t.preheat_end_time,
+			t.apply_end_time,
+			t.end_time,
+			t.`status`,
+			t.create_time,
+ 			IFNULL((SELECT trial.pc_cover  from diy_trial trial  where trial.id=t.id),p.cover) AS pc_cover,
+ 			IFNULL((SELECT trial.m_cover  from diy_trial trial  where trial.id=t.id),p.cover) AS m_cover,
+ 			p.`name` product_name,
+			(SELECT count(*) FROM	diy_trial_application u WHERE	u.trial_id = t.id) trial_user_num,
+			(SELECT count(*) FROM   diy_trial_report r WHERE r.trial_id = t.id) report_num
+	 	FROM
+			diy_trial t
+	 	JOIN diy_product p ON t.product_id = p.id
+	 	ORDER BY t.create_time DESC
+		LIMIT #{startItem},#{pageSize}
+	</select>
+	
+	<!--查询指定的试用活动信息 -->
+	<select id="selectTrialSupperById" resultMap="diyTrialSupperBackMap"	parameterType="Long">
+		SELECT
+			dt.*, 
+			p.`name` product_name,
+			p.price,
+			dtd.id data_id,
+			dtd.trial_id,
+			dtd.relation_id,
+			dtd.create_time data_create_time,
+			dtd.`name` pro_name,
+			dtd.cover
+		FROM
+			diy_trial dt
+		JOIN diy_product p ON dt.product_id = p.id
+		LEFT JOIN (
+			SELECT d.*, dp.cover,dp.`name`
+			FROM
+				diy_trial_data d
+			JOIN diy_product dp ON d.relation_id = dp.id
+			WHERE
+			d.trial_id = #{id}
+		) dtd ON dt.id = dtd.trial_id
+		WHERE  dt.id = #{id};
+	</select>
+	
+	<!--查询指定的试用活动信息 -->
+	<select id="selectTrialById" resultMap="diyTrialBackMap"	parameterType="Long">
+		SELECT
+			dt.*
+		FROM
+			diy_trial dt
+		WHERE  dt.id = #{id};
+	</select>
+	
+	<!-- 插入试用活动记录-->
+	<insert id="insertDiyTrial" keyProperty="id" useGeneratedKeys="true">
+		INSERT INTO `diy_trial`
+		<trim prefix="(" suffix=")" suffixOverrides=",">
+			`product_id`,`trial_num`, `pc_cover`, `m_cover`, `base`, `start_time`, `preheat_end_time`,
+			`apply_end_time`, `end_time`, `is_charge_deposit`, `rule`, `status`, `create_time`
+		</trim>
+		VALUES
+		<trim prefix="(" suffix=")" suffixOverrides=",">
+			#{productId},#{trialNum}, #{pcCover}, #{mCover}, #{base}, #{startTime},#{preheatEndTime}, #{applyEndTime}, #{endTime},
+			#{isChargeDeposit}, #{rule}, #{status}, NOW()
+		</trim>
+	</insert>
+	
+	<!-- 更新试用活动信息 -->
+	<update id="updateDiyTrial">
+		UPDATE `diy_trial`
+		<set>
+			<if test="productId != null">
+				`product_id` = #{productId},
+			</if>
+			<if test="trialNum != null">
+				`trial_num` = #{trialNum},
+			</if>
+			<if test="pcCover != null">
+				`pc_cover` = #{pcCover},
+			</if>
+			<if test="mCover != null">
+				`m_cover` = #{mCover},
+			</if>
+			<if test="base != null">
+				`base` = #{base},
+			</if>
+			<if test="startTime != null">
+				`start_time` = #{startTime},
+			</if>
+			<if test="preheatEndTime != null">
+				`preheat_end_time` = #{preheatEndTime},
+			</if>
+			<if test="applyEndTime != null">
+				`apply_end_time` = #{applyEndTime},
+			</if>
+			<if test="endTime != null">
+				`end_time` = #{endTime},
+			</if>
+			<if test="isChargeDeposit != null">
+				`is_charge_deposit` = #{isChargeDeposit},
+			</if>
+			<if test="rule != null">
+				`rule` = #{rule},
+			</if>
+			<if test="status != null">
+				`status` = #{status},
+			</if>
+			<if test="sort != null">
+				`sort` = #{sort}
+			</if>
+		</set>
+		<where>
+			`id` = #{id}
+		</where>
+	</update>
+	
+	<!-- 删除试用活动 -->
+	<delete id="deleteDiyTrial" parameterType="Long">
+		DELETE `diy_trial`,
+ 				`diy_trial_data`
+		FROM `diy_trial`
+		LEFT JOIN `diy_trial_data` ON `diy_trial`.`id` = `diy_trial_data`.trial_id
+		WHERE
+			`diy_trial`.`id` = #{id}
+	</delete>
+	
+	<!-- 试用活动推荐商品的操作  -->
+	<insert id="insertDiyTrialData" keyProperty="id"
+		useGeneratedKeys="true">
+		INSERT INTO `diy_trial_data`
+		<trim prefix="(" suffix=")" suffixOverrides=",">
+			`trial_id`,`relation_id`, `create_time`
+		</trim>
+		VALUES
+		<trim prefix="(" suffix=")" suffixOverrides=",">
+			#{trialId},#{relationId}, now()
+		</trim>
+	</insert>
+
+	<!-- 删除试用活动推荐商品-->
+	<delete id="deleteDiyTrialData">
+		DELETE FROM diy_trial_data WHERE 1 = 1
+		<if test="id != null">
+			AND `id` = #{id}
+		</if>
+		<if test="trialId != null">
+			AND `trial_id` = #{trialId}
+		</if>
+	</delete>
+	
+	
+
+</mapper>

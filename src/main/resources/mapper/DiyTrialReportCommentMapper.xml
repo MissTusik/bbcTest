@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.haier.diy.trial.mapper.DiyTrialReportCommentMapper">
+	<resultMap id="BaseResultMap" type="com.bcc.test.trial.domain.DiyTrialReportComment">
+		<id column="id" property="id" jdbcType="BIGINT" />
+		<result column="user_id" property="userId" jdbcType="BIGINT" />
+		<result column="parent_id" property="parentId" jdbcType="BIGINT" />
+		<result column="to_user_id" property="toUserId" jdbcType="BIGINT" />
+		<result column="group_id" property="groupId" jdbcType="BIGINT" />
+		<result column="content" property="content" jdbcType="VARCHAR" />
+		<result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
+		<result column="report_id" property="reportId" jdbcType="BIGINT" />
+	</resultMap>
+	
+	<resultMap id="ResultMapCus" type="com.bcc.test.trial.domain.DiyTrialReportCommentCus"  extends="BaseResultMap">
+		<result column="nickname" property="nickname" jdbcType="VARCHAR" />
+		<result column="toNickname" property="toNickname" jdbcType="VARCHAR" />
+		<result column="headImg" property="headImg" jdbcType="VARCHAR" />
+	</resultMap>
+	<sql id="Base_Column_Exclude_Id">
+		user_id, parent_id, to_user_id, group_id, content, create_time, report_id
+	</sql>	
+	<sql id="Base_Column_List">
+		id, <include refid="Base_Column_Exclude_Id"/>
+	</sql>
+	
+	<sql id="Base_Column_Value">
+        #{userId},
+        <if test="parentId != null">#{parentId},</if>
+        <if test="parentId == null">0,</if>
+        #{toUserId},
+        <if test="groupId != null">#{groupId},</if>
+        <if test="groupId == null">0,</if>
+        #{content},
+        NOW(),
+        #{reportId}
+    </sql>
+	
+	<sql id="getTrialReportCommentWhere">
+		<if test="type=='parent'">
+			dtrc.parent_id = 0 
+			AND dtrc.report_id=#{reportId}
+			ORDER BY dtrc.create_time DESC
+			LIMIT #{page.startItem},#{page.pageSize}
+		</if>
+		<if test="type=='child'">
+			dtrc.group_id=#{groupId} 
+			AND dtrc.report_id =#{reportId}
+			ORDER BY dtrc.create_time DESC 
+			<if test="startItem==null">
+				LIMIT #{page.startItem},#{page.pageSize}
+			</if>
+			<if test="startItem!=null">
+				LIMIT #{startItem},#{page.pageSize}
+			</if>
+		</if>
+	</sql>
+    <!-- 获取指定试用报告顶级话题总数 -->
+	<select id="getTrialReportCommentTotal" parameterType="java.lang.Long" resultType="Integer">
+		SELECT COUNT(`id`)
+		FROM diy_trial_report_comment dtrc
+		WHERE dtrc.parent_id = 0 
+			AND report_id=#{reportId}
+	</select>
+	<!-- 获取子级话题总数 -->
+	<select id="getChildTrialReportCommentTotal" parameterType="Map" resultType="Integer">
+		SELECT COUNT(`id`)
+		FROM diy_trial_report_comment dtrc
+		WHERE dtrc.group_id = #{groupId}
+			AND report_id=#{reportId}
+	</select>
+	<!-- 分页获取试用报告评论 顶级评论或子级评论                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         -->
+	<select id="getTrialReportComment" parameterType="Map" resultMap="ResultMapCus">
+		SELECT dtrc.id,
+			dtrc.report_id,
+			dtrc.user_id,
+			dtrc.to_user_id,
+			dtrc.content,
+			dtrc.create_time,
+			du.nickname,
+			du.head_Img headImg,
+			u.nickname toNickname
+<!-- 		(SELECT u.nickname FROM diy_user u WHERE u.id=dtrc.user_id) nickname,
+			(SELECT u.head_Img FROM diy_user u WHERE u.id=dtrc.user_id) headImg,
+			(SELECT nickname FROM diy_user WHERE id=dtrc.to_user_id) toNickname -->
+		FROM diy_trial_report_comment dtrc
+		LEFT JOIN  diy_user  du  ON   du.id=dtrc.user_id
+		LEFT JOIN   diy_user  u ON u.id=dtrc.to_user_id
+		<where>
+			<include refid="getTrialReportCommentWhere"/>
+		</where>
+	</select>
+	<!--获取指定的报告评论详情  -->
+	<select id="getTrialReportCommentCusById" parameterType="java.lang.Long" resultMap="ResultMapCus">
+		SELECT 	dtrc.id,
+			dtrc.user_id,
+			dtrc.to_user_id,
+			dtrc.content,
+			dtrc.create_time,
+			du.nickname,
+      		du.head_img headImg,
+      		u.nickname toNickname
+<!-- 		(SELECT u.nickname FROM diy_user u WHERE u.id=dtrc.user_id) nickname,
+			(SELECT u.head_Img FROM diy_user u WHERE u.id=dtrc.user_id) headImg, 
+			(SELECT nickname FROM diy_user WHERE id=dtrc.to_user_id) toNickname-->
+		FROM diy_trial_report_comment dtrc
+		LEFT JOIN   diy_user du ON du.id=dtrc.user_id
+		LEFT JOIN   diy_user  u ON u.id=dtrc.to_user_id
+		WHERE dtrc.id=#{id}
+	</select>	
+	
+     <!-- 获取指定id的报告评论基础信息-->
+	<select id="getTrialReportCommentById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+		SELECT <include refid="Base_Column_List"/>
+		FROM diy_trial_report_comment
+		WHERE id = #{id} 
+	</select>
+	
+	<!-- 获取指定用户的试用报告评论记录 -->
+	<select id="getReportCommentListByUserId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+		SELECT * FROM diy_trial_report_comment WHERE user_id=#{userId}
+	</select>
+	
+	<!-- 批量更新指定试用报告评论的UserId -->
+	<update id="updateReportCommentUserId" parameterType="Map">
+		UPDATE diy_trial_report_comment
+		SET user_id = #{userId}
+		WHERE
+			id
+			<foreach collection="list" open="IN(" item="id" separator="," close=")">
+				#{id}
+			</foreach>
+	</update>
+	
+	<!-- 创建试用报告评论 -->
+	<insert id="createTrialReportComment" parameterType="com.bcc.test.trial.domain.DiyTrialReportComment" keyProperty="id" useGeneratedKeys="true">
+		<selectKey keyProperty="id" resultType="java.lang.Long" order="AFTER">
+			SELECT @@IDENTITY
+		</selectKey>
+		INSERT INTO diy_trial_report_comment 
+		<trim prefix="(" suffix=")" suffixOverrides=",">
+			create_time,
+			<if test="userId != null">
+				user_id,
+			</if>
+			<if test="parentId != null">
+				parent_id,
+			</if>
+			<if test="toUserId != null">
+				to_user_id,
+			</if>
+			<if test="groupId != null">
+				group_id,
+			</if>
+			<if test="content != null">
+				content,
+			</if>
+			<if test="reportId != null">
+				report_id,
+			</if>
+		</trim>
+		<trim prefix="values (" suffix=")" suffixOverrides=",">
+			NOW(),
+			<if test="userId != null">
+				#{userId},
+			</if>
+			<if test="parentId != null">
+				#{parentId},
+			</if>
+			<if test="toUserId != null">
+				#{toUserId},
+			</if>
+			<if test="groupId != null">
+				#{groupId},
+			</if>
+			<if test="content != null">
+				#{content},
+			</if>
+			<if test="reportId != null">
+				#{reportId},
+			</if>
+		</trim>
+	</insert>
+	
+	
+</mapper>

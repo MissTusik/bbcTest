@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.haier.diy.trial.mapper.DiyTrialReportMapper">
+	<resultMap id="BaseResultMap" type="com.bcc.test.trial.domain.DiyTrialReport">
+		<id column="id" property="id" jdbcType="BIGINT" />
+		<result column="trial_id" property="trialId" jdbcType="BIGINT" />
+		<result column="trial_application_id" property="trialApplicationId" jdbcType="BIGINT" />
+		<result column="user_id" property="userId" jdbcType="BIGINT" />
+		<result column="cover" property="cover" jdbcType="VARCHAR" />
+		<result column="summary" property="summary" jdbcType="VARCHAR" />
+		<result column="content" property="content" jdbcType="VARCHAR" />
+		<result column="comprehensive_score" property="comprehensiveScore" jdbcType="INTEGER" />
+		<result column="function_score" property="functionScore" jdbcType="INTEGER" />
+		<result column="appearance_score" property="appearanceScore" jdbcType="INTEGER" />
+		<result column="performance_score" property="performanceScore" jdbcType="INTEGER" />
+		<result column="status" property="status" jdbcType="INTEGER" />
+		<result column="is_public" property="isPublic" jdbcType="VARCHAR" />
+		<result column="public_time" property="publicTime" jdbcType="TIMESTAMP" />
+		<result column="is_recommend" property="isRecommend" jdbcType="VARCHAR" />
+		<result column="like_num" property="likeNum" jdbcType="INTEGER" />
+		<result column="dislike_num" property="dislikeNum" jdbcType="INTEGER" />
+		<result column="comment_num" property="commentNum" jdbcType="INTEGER" />
+		<result column="is_show" property="isShow" jdbcType="VARCHAR" />
+		<result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
+		<result column="sort" property="sort" jdbcType="INTEGER" />
+		<result column="pc_url" property="pcUrl" jdbcType="VARCHAR" />
+		<result column="m_url" property="mUrl" jdbcType="VARCHAR" />
+	</resultMap>
+	<resultMap id="ResultMapCus" type="com.bcc.test.trial.domain.DiyTrialReportCus" extends="BaseResultMap">
+		<result column="nickname" property="nickname" jdbcType="VARCHAR" />
+		<result column="head_img" property="headImg" jdbcType="VARCHAR" />
+		<result column="product_name" property="productName" jdbcType="VARCHAR" />
+		<result column="product_id" property="productId" jdbcType="BIGINT" />
+		<result column="pc_cover" property="pcCover" jdbcType="VARCHAR" />
+		<result column="m_cover" property="mCover" jdbcType="VARCHAR" />
+		<result column="base" property="base" jdbcType="INTEGER" />
+		<!-- <result column="trial_user_num" property="trialUserNum" jdbcType="INTEGER" /> -->
+		<!-- <result column="report_num" property="reportNum" jdbcType="INTEGER" /> -->
+		<result column="is_like" property="isLike" jdbcType="INTEGER" />
+		<result column="is_dislike" property="isDislike" jdbcType="INTEGER" />
+		<association property="trialUserNum" column="trial_id"   select="queryTrialUserNum"/>
+		<association property="reportNum" column="trial_id"   select="queryReportNum"/>
+	</resultMap>	
+	
+	<!-- 试用报告点赞/点踩Map -->
+	<resultMap id="LikeResultMap" type="com.bcc.test.trial.domain.DiyTrialReportLike">
+		<id column="id" property="id" jdbcType="BIGINT" />
+		<result column="user_id" property="userId" jdbcType="BIGINT" />
+		<result column="type" property="type" jdbcType="INTEGER" />
+		<result column="report_id" property="reportId" jdbcType="BIGINT" />
+		<result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
+	</resultMap>
+	
+	<!-- 获取所有公示试用报告数量 -->
+	<select id="getTrialReportCount"  resultType="Integer" parameterType="java.lang.Object">
+		SELECT count(r.id) 
+		FROM diy_trial_report r  
+		INNER JOIN  diy_trial t  ON  r.trial_id=t.id
+		INNER JOIN diy_product dp ON t.product_id = dp.id
+		INNER JOIN diy_user du ON r.user_id = du.id
+		WHERE r.is_public='Y'
+		AND r.is_show = 'Y'
+		<if test="trialId!=null">
+			AND r.trial_id=#{trialId}
+		</if>
+		<if test="isRecommend!=null">
+			AND r.is_recommend = #{isRecommend}
+		</if>
+	</select>
+	
+	<!-- 分页获取所有公示试用报告列表 -->
+	<select id="getTrialReportByPage" parameterType="java.lang.Object" resultType="Map">
+	  	SELECT
+			dtr.id,
+			dp.`name`,
+			du.head_img  headImg,
+			du.nickname,
+			dtr.cover,
+			dtr.summary,
+			dtr.comprehensive_score comprehensiveScore,
+			dtr.appearance_score appearanceScore,
+			dtr.function_score functionScore,
+			dtr.performance_score performanceScore,
+			dtr.content	
+		FROM
+			diy_trial_report dtr
+		INNER JOIN diy_trial dt ON dtr.trial_id = dt.id
+		INNER JOIN diy_product dp ON dt.product_id = dp.id
+		INNER JOIN diy_user du ON dtr.user_id = du.id
+		WHERE  dtr.is_public='Y'
+		AND dtr.is_show = 'Y'
+		<if test="trialId!=null">
+			AND dtr.trial_id=#{trialId}
+		</if>
+		<if test="isRecommend!=null">
+			AND dtr.is_recommend = #{isRecommend}
+		</if>
+		ORDER BY dtr.sort, dtr.create_time DESC
+		LIMIT #{startItem},#{pageSize}
+	</select>
+	
+	
+	<!--查询指定的试用报告信息 -->
+	<select id="getTrialReportById" resultMap="ResultMapCus"	parameterType="java.lang.Object">
+		SELECT
+			dtr.*,
+      		IFNULL(dt.pc_cover,dp.cover) AS pc_cover,
+      		IFNULL(dt.m_cover,dp.cover) AS m_cover,
+      		dt.base,
+      		dt.product_id,
+      		dp.`name` product_name,
+      		<!-- (select count(*) from diy_trial_application dtu where dtu.trial_id=dt.id) trial_user_num, -->
+			<!-- (SELECT count(*) FROM   diy_trial_report r WHERE r.trial_id =  dt.id  and r.is_public='Y' and r.is_show='Y') report_num, -->
+			(select count(*) from diy_trial_report_like dtrl where dtrl.report_id=dtr.id and dtrl.user_id=#{userId} and dtrl.type=1) is_like,
+			(select count(*) from diy_trial_report_like dtrl where dtrl.report_id=dtr.id and dtrl.user_id=#{userId} and dtrl.type=2) is_dislike,
+  			du.nickname,
+      		du.head_img
+		FROM
+			diy_trial_report dtr
+		INNER JOIN diy_trial dt ON dtr.trial_id=dt.id
+    	INNER JOIN diy_product dp ON  dt.product_id=dp.id
+		INNER JOIN diy_user du ON dtr.user_id = du.id
+		WHERE  dtr.id= #{id}
+	</select> 
+	<!--查询指定的试用报告信息 -->
+	<select id="selectTrialReportById" resultMap="BaseResultMap"	parameterType="Long">
+		SELECT
+			dtr.*
+		FROM
+			diy_trial_report dtr
+		WHERE 	dtr.id= #{id}
+	</select> 
+	<!--查询指定试用申请的试用报告信息 -->
+	<select id="getTrialReportByApplicationId" resultMap="BaseResultMap"	parameterType="Long">
+		SELECT
+			dtr.*
+		FROM
+			diy_trial_report dtr
+		WHERE 	dtr.trial_application_id= #{applicationId}
+	</select> 
+	
+	<!-- 查询指定id的试用活动的申请人数 -->
+	<select id="queryTrialUserNum"  resultType="Integer">
+		select count(*) from diy_trial_application dtu where dtu.trial_id=#{id}
+	</select>
+		
+		
+	<!-- 查询指定id的试用活动的试用报告数 -->
+	<select id="queryReportNum"  resultType="Integer">
+		SELECT count(*) FROM   diy_trial_report r WHERE r.trial_id =  #{id}  and r.is_public='Y' and r.is_show='Y'
+	</select>	
+	
+	<!-- 获取指定用户的试用报告记录 -->
+	<select id="getReportListByUserId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+		SELECT * FROM diy_trial_report WHERE user_id=#{userId}
+	</select>
+	
+	<!-- 批量更新指定试用报告的UserId -->
+	<update id="updateReportUserId" parameterType="Map">
+		UPDATE diy_trial_report
+		SET user_id = #{userId}
+		WHERE
+			id
+			<foreach collection="list" open="IN(" item="id" separator="," close=")">
+				#{id}
+			</foreach>
+	</update>
+	
+	
+	<!--  新增试用报告记录-->
+	<insert id="insertTrialReport" keyProperty="id" useGeneratedKeys="true" >
+		INSERT INTO `diy_trial_report`
+		<trim prefix="(" suffix=")" suffixOverrides="," >
+			`trial_id`,`trial_application_id`,`user_id`, `cover`,`summary`,`content`, `comprehensive_score`,`function_score`,
+			`appearance_score`,`performance_score`,`status`,`create_time`,
+		</trim>
+		VALUES
+		<trim prefix="(" suffix=")" suffixOverrides="," >
+			#{trialId},#{trialApplicationId}, #{userId}, #{cover}, #{summary}, #{content},#{comprehensiveScore},#{functionScore},
+			#{appearanceScore},#{performanceScore},#{status}, NOW(),
+		</trim>
+	</insert>
+	
+	<!--  更新试用报告记录-->
+	<update id="updateTrialReport" parameterType="com.bcc.test.trial.domain.DiyTrialReport">
+	 	update diy_trial_report 
+	 	<set>
+			<if test="id!=null">id=#{id},</if>
+			<if test="trialId!=null">trial_id=#{trialId},</if>
+			<if test="trialApplicationId!=null">trial_application_id=#{trialApplicationId},</if>
+			<if test="userId!=null">user_id=#{userId},</if>
+			<if test="cover!=null">cover=#{cover},</if>
+			<if test="summary!=null">summary=#{summary},</if>
+			<if test="content!=null">content=#{content},</if>
+			<if test="comprehensiveScore!=null">comprehensive_score=#{comprehensiveScore},</if>
+			<if test="functionScore!=null">function_score=#{functionScore},</if>
+			<if test="appearanceScore!=null">appearance_score=#{appearanceScore},</if>
+			<if test="performanceScore!=null">performance_score=#{performanceScore},</if>
+			<if test="status!=null">`status`=#{status},</if>
+			<if test="likeNum!=null">like_num=#{likeNum},</if>
+			<if test="commentNum!=null">comment_num=#{commentNum},</if>
+			<if test="dislikeNum!=null">dislike_num=#{dislikeNum},</if>
+			<if test="createTime!=null">create_time=#{createTime},</if>
+			</set>
+		where id=#{id}
+	</update>
+	<update id="updateTrialReportNum" parameterType="com.bcc.test.trial.domain.DiyTrialReport">
+	 	update diy_trial_report 
+	 	<set>
+			<if test="likeNum != null">
+				`like_num` = `like_num` + #{likeNum}
+			</if>
+			<if test="commentNum != null">
+				`comment_num` = `comment_num` + #{commentNum}
+			</if>
+			<if test="dislikeNum != null">
+				`dislike_num` = `like_num` + #{dislikeNum}
+			</if>
+			</set>
+		where id=#{id}
+	</update>
+	
+	<!--有关试用报告点赞和点踩的操作 -->
+	
+	<!--查询指定的用户和试用报告点赞/点踩记录 -->
+	<select id="selectReportLikeByUserId" resultMap="LikeResultMap"	parameterType="java.lang.Object">
+		SELECT
+			dtrl.*
+		FROM
+			diy_trial_report_like dtrl
+		WHERE  dtrl.report_id = #{reportId}
+		AND  dtrl.user_id=#{userId}
+		AND  dtrl.type=#{type}
+	</select>
+	
+	<!-- 插入点赞/点踩记录 -->
+	<insert id="insertLike" keyProperty="id" useGeneratedKeys="true" >
+		INSERT INTO `diy_trial_report_like`
+		<trim prefix="(" suffix=")" suffixOverrides="," >
+			`user_id`, `type`, `report_id`, `create_time`,
+		</trim>
+		VALUES
+		<trim prefix="(" suffix=")" suffixOverrides="," >
+			#{userId}, #{type}, #{reportId}, NOW(),
+		</trim>
+	</insert>
+	
+	<!-- 删除试用活动收藏记录  -->
+	 <delete id="deleteTrialCollect">
+  		DELETE FROM diy_trial_collect WHERE user_id = #{userId} AND trial_id = #{trialId}
+  	</delete>
+  	
+
+	
+
+</mapper>

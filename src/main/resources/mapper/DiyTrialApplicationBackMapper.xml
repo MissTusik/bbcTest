@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.haier.diy.web.mapper.DiyTrialApplicationBackMapper">
+	<resultMap id="diyTrialApplicationBackMap" type="com.bcc.test.trial.domain.DiyTrialApplication">
+		<id column="id" property="id" jdbcType="BIGINT" />
+		<result column="trial_id" property="trialId" jdbcType="BIGINT" />
+		<result column="user_id" property="userId" jdbcType="BIGINT" />
+		<result column="name" property="name" jdbcType="VARCHAR" />
+		<result column="sex" property="sex" jdbcType="INTEGER" />
+		<result column="mobile" property="mobile" jdbcType="VARCHAR" />
+		<result column="reason" property="reason" jdbcType="VARCHAR" />
+		<result column="reason_weight" property="reasonWeight" jdbcType="INTEGER" />
+		<result column="is_ballot" property="isBallot" jdbcType="VARCHAR" />
+		<result column="is_public" property="isPublic" jdbcType="VARCHAR" />
+		<result column="public_time" property="publicTime" jdbcType="TIMESTAMP" />
+		<result column="pay_start_time" property="payStartTime" jdbcType="TIMESTAMP" />
+		<result column="pay_end_time" property="payEndTime" jdbcType="TIMESTAMP" />
+		<result column="order_id" property="orderId" jdbcType="BIGINT" />
+		<result column="address_id" property="addressId" jdbcType="BIGINT" />
+		<result column="address" property="address" jdbcType="VARCHAR" />
+		<result column="express_company" property="expressCompany" jdbcType="VARCHAR" />
+		<result column="express_no" property="expressNo" jdbcType="VARCHAR" />
+		<result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
+		<result column="is_show_reason" property="isShowReason" jdbcType="VARCHAR" />
+		<result column="is_delete" property="isDelete" jdbcType="VARCHAR" />
+	</resultMap>
+	<!-- 试用申请扩展Map-->
+	<resultMap id="ApplicationResultMapCus" type="com.bcc.test.trial.domain.DiyTrialApplicationCus"  extends="diyTrialApplicationBackMap">
+		<result column="pc_cover" property="pcCover" jdbcType="VARCHAR" />
+		<result column="m_cover" property="mCover" jdbcType="VARCHAR" />
+		<result column="product_name" property="productName" jdbcType="VARCHAR" />
+		<result column="title" property="title" jdbcType="VARCHAR" />
+		<result column="price" property="price" jdbcType="DECIMAL" />
+		<result column="deposit_price" property="depositPrice" jdbcType="DECIMAL" />
+		<result column="product_id" property="productId" jdbcType="BIGINT" />
+		<result column="package_id" property="packageId" jdbcType="BIGINT" />
+		<result column="start_time" property="startTime" jdbcType="TIMESTAMP" />
+		<result column="end_time" property="endTime" jdbcType="TIMESTAMP" />
+		<result column="trial_num" property="trialNum" jdbcType="INTEGER" />
+		<result column="is_charge_deposit" property="isChargeDeposit" jdbcType="VARCHAR" />
+		<result column="order_status" property="orderStatus" jdbcType="VARCHAR" />
+		<result column="report_id" property="reportId" jdbcType="BIGINT" />
+		<result column="report_status" property="reportStatus" jdbcType="VARCHAR" />
+		<result column="hbase_order_id" property="hbaseOrderId" jdbcType="BIGINT" />
+	</resultMap>
+	<resultMap id="ApplicationSupperBackMap" type="com.bcc.test.trialBack.domain.DiyTrialApplicationSupper" extends="diyTrialApplicationBackMap">
+		<result column="nickname" property="nickname" jdbcType="VARCHAR" />
+		<result column="head_img" property="headImg" jdbcType="VARCHAR" />
+		<result column="order_status" property="orderStatus" jdbcType="VARCHAR" />
+		<result column="report_status" property="reportStatus" jdbcType="INTEGER" />
+		<result column="is_charge_deposit" property="isChargeDeposit" jdbcType="VARCHAR" />
+	</resultMap>	
+	<!-- 获取申请用户数量 -->
+	<select id="getTrialUserCount" parameterType="java.lang.Object"  resultType="Integer">
+		SELECT count(id) 
+		FROM diy_trial_application u 
+		WHERE u.trial_id=#{trialId} 
+		<if test="isBallot != null">
+			AND u.is_ballot=#{isBallot}
+		</if>
+	</select>
+	
+	<!-- 分页获取指定试用活动全部用户列表 -->
+	<select id="getTrialUserByPage" parameterType="java.lang.Object" resultType="java.util.Map">
+	  	SELECT
+			dtu.id,
+			dtu.trial_id trialId,
+			dtu.`name`,
+			dtu.sex,
+			dtu.mobile,
+			dtu.reason,
+			dtu.is_ballot isBallot,
+			dtu.is_show_reason isShowReason,
+			dtu.create_time createTime,
+			du.nickname,
+			du.head_img  headImg
+		FROM
+			`diy_trial_application` dtu
+		INNER JOIN diy_user du ON dtu.user_id = du.id
+		WHERE  dtu.trial_id=#{trialId}
+		ORDER BY
+			dtu.is_ballot DESC,dtu.create_time DESC
+		LIMIT #{startItem},#{pageSize}
+	</select>
+	
+	<!-- 分页获取指定试用活动中签用户列表 -->
+	<select id="getTrialBallotUserByPage" parameterType="java.lang.Object" resultMap="ApplicationSupperBackMap">
+		SELECT
+			dtu.*,
+			du.nickname,
+			du.head_img ,
+			o.`status` order_status,
+     		dtr.`status`  report_status
+		FROM
+			`diy_trial_application` dtu
+		INNER JOIN diy_user du ON dtu.user_id = du.id
+		LEFT JOIN diy_order o ON dtu.order_id = o.id
+		LEFT JOIN   diy_trial_report  dtr  on dtr.trial_application_id=dtu.id
+		WHERE
+			dtu.trial_id = #{trialId}  and dtu.is_ballot=#{isBallot}
+		ORDER BY
+			dtu.create_time DESC
+		LIMIT #{startItem},#{pageSize}
+	</select>
+	
+	<!--查询指定的试用申请详细信息 -->
+	<select id="selectDiyTrialUserById" resultMap="ApplicationSupperBackMap"	parameterType="Long">
+	SELECT
+		u.*, t.is_charge_deposit,
+		o.`status` order_status,
+		o.buyer_address address,
+		r.`status` report_status,
+    	du.nickname
+	FROM
+		`diy_trial_application` u
+	JOIN diy_trial t ON u.trial_id = t.id
+	JOIN diy_user  du on u.user_id=du.id
+	LEFT JOIN diy_order o ON u.order_id = o.id
+	LEFT JOIN diy_trial_report r ON u.id = r.trial_application_id
+	WHERE
+		u.id = #{id}		
+	</select>
+
+	<!--查询指定的试用申请信息 -->
+	<select id="getDiyTrialUserById" resultMap="diyTrialApplicationBackMap"	parameterType="Long">
+		SELECT * FROM `diy_trial_application` u where u.id=#{id};
+	</select>
+	
+    <!--查询指定的试用活动所有公示用户列表 -->
+	<select id="selectPublicTrialUser" resultMap="ApplicationSupperBackMap"	parameterType="Long">
+		SELECT
+			dtu.*,
+			o.`status` order_status,
+     	    dtr.`status`  report_status
+		FROM
+			`diy_trial_application` dtu
+		INNER JOIN diy_user du ON dtu.user_id = du.id
+		LEFT JOIN diy_order o ON dtu.order_id = o.id
+		LEFT JOIN   diy_trial_report  dtr  on dtr.user_id=dtu.user_id
+		WHERE
+			dtu.trial_id = #{trialId} and dtu.is_public='Y'
+	</select>
+	<!-- 查询指定ids集合的用户列表 -->	
+	<select id="selectTrialUserByIds" resultMap="diyTrialApplicationBackMap"	parameterType="java.util.List">
+		SELECT
+			u.*
+		FROM
+			`diy_trial_application` u
+		WHERE
+			u.id in
+			<foreach collection="idsList"  item="id" separator="," open="(" close=")">
+				#{id}
+			</foreach>	
+	</select>
+	
+	<!-- 获取所有无试用报告的已支付押金的申请-->
+	<select  id="getNoReportDepositApplication" resultMap="ApplicationResultMapCus">
+		SELECT
+			dta.*, 
+			dt.start_time,
+			dt.end_time,
+			dt.trial_num,
+			dt.is_charge_deposit,
+			dt.product_id,
+			o.`status` order_status,
+			o.hbase_order_id,
+			dtr.id report_id,
+			dtr.`status` report_status
+		FROM
+			diy_trial_application dta
+		INNER JOIN diy_trial dt ON dta.trial_id = dt.id
+		INNER JOIN diy_order o ON o.id = dta.order_id
+		LEFT JOIN diy_trial_report dtr ON dtr.trial_id = dta.trial_id AND dtr.user_id = dta.user_id
+		WHERE  o.`status`='99'
+	</select>
+	
+	<!-- 更新试用申请信息 -->
+	<update id="updateDiyTrialUser">
+		UPDATE `diy_trial_application`
+		<set>
+			<if test="isBallot != null">
+				`is_ballot` = #{isBallot},
+			</if>
+			<if test="isPublic != null">
+				`is_public` = #{isPublic},
+			</if>
+			<if test="publicTimeStr != null">
+				`public_time` = #{publicTimeStr},
+			</if>
+			<if test="payStartTimeStr != null">
+				`pay_start_time` = #{payStartTimeStr},
+			</if>
+			<if test="payEndTimeStr != null">
+				`pay_end_time` = #{payEndTimeStr},
+			</if>
+			<if test="orderId != null">
+				`order_id` = #{orderId},
+			</if>
+			<if test="addressId != null">
+				`address_id` = #{addressId},
+			</if>
+			<if test="expressCompany != null">
+				`express_company` = #{expressCompany},
+			</if>
+			<if test="expressNo != null">
+				`express_no` = #{expressNo},
+			</if>
+			<if test="isShowReason != null">
+				`is_show_reason` = #{isShowReason}
+			</if>
+		</set>
+		<where>
+			`id` = #{id}
+		</where>
+	</update>
+		<!-- 删除用户申请数据 -->
+	<delete id="deleteDiyTrialUser" parameterType="Long">
+		DELETE 	FROM `diy_trial_application`	WHERE  `id` = #{id}
+	</delete>
+</mapper>

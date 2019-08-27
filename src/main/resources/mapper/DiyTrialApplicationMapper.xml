@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.haier.diy.trial.mapper.DiyTrialApplicationMapper">
+	<!-- 试用申请map -->
+	<resultMap id="ApplicationResultMap" type="com.bcc.test.trial.domain.DiyTrialApplication">
+		<id column="id" property="id" jdbcType="BIGINT" />
+		<result column="trial_id" property="trialId" jdbcType="BIGINT" />
+		<result column="user_id" property="userId" jdbcType="BIGINT" />
+		<result column="name" property="name" jdbcType="VARCHAR" />
+		<result column="sex" property="sex" jdbcType="INTEGER" />
+		<result column="mobile" property="mobile" jdbcType="VARCHAR" />
+		<result column="reason" property="reason" jdbcType="VARCHAR" />
+		<result column="reason_weight" property="reasonWeight" jdbcType="INTEGER" />
+		<result column="is_ballot" property="isBallot" jdbcType="VARCHAR" />
+		<result column="is_public" property="isPublic" jdbcType="VARCHAR" />
+		<result column="public_time" property="publicTime" jdbcType="TIMESTAMP" />
+		<result column="pay_start_time" property="payStartTime" jdbcType="TIMESTAMP" />
+		<result column="pay_end_time" property="payEndTime" jdbcType="TIMESTAMP" />
+		<result column="order_id" property="orderId" jdbcType="BIGINT" />
+		<result column="address_id" property="addressId" jdbcType="BIGINT" />
+		<result column="address" property="address" jdbcType="VARCHAR" />
+		<result column="express_company" property="expressCompany" jdbcType="VARCHAR" />
+		<result column="express_no" property="expressNo" jdbcType="VARCHAR" />
+		<result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
+		<result column="is_show_reason" property="isShowReason" jdbcType="VARCHAR" />
+		<result column="is_delete" property="isDelete" jdbcType="VARCHAR" />
+	</resultMap>
+	<!-- 试用申请扩展Map-->
+	<resultMap id="ApplicationResultMapCus" type="com.bcc.test.trial.domain.DiyTrialApplicationCus"  extends="ApplicationResultMap">
+		<result column="pc_cover" property="pcCover" jdbcType="VARCHAR" />
+		<result column="m_cover" property="mCover" jdbcType="VARCHAR" />
+		<result column="product_name" property="productName" jdbcType="VARCHAR" />
+		<result column="title" property="title" jdbcType="VARCHAR" />
+		<result column="price" property="price" jdbcType="DECIMAL" />
+		<result column="deposit_price" property="depositPrice" jdbcType="DECIMAL" />
+		<result column="product_id" property="productId" jdbcType="BIGINT" />
+		<result column="package_id" property="packageId" jdbcType="BIGINT" />
+		<result column="start_time" property="startTime" jdbcType="TIMESTAMP" />
+		<result column="end_time" property="endTime" jdbcType="TIMESTAMP" />
+		<result column="trial_num" property="trialNum" jdbcType="INTEGER" />
+		<result column="is_charge_deposit" property="isChargeDeposit" jdbcType="VARCHAR" />
+		<result column="order_status" property="orderStatus" jdbcType="VARCHAR" />
+		<result column="report_id" property="reportId" jdbcType="BIGINT" />
+		<result column="report_status" property="reportStatus" jdbcType="VARCHAR" />
+		<result column="hbase_order_id" property="hbaseOrderId" jdbcType="BIGINT" />
+		<result column="nickname" property="nickname" jdbcType="VARCHAR" />
+		<result column="head_img" property="headImg" jdbcType="VARCHAR" />
+	</resultMap>
+	<!-- 试用申请理由评论map -->	
+	<resultMap id="CommentResultMap" type="com.bcc.test.trial.domain.DiyTrialReasonComment">
+		<id column="id" property="id" jdbcType="BIGINT" />
+		<result column="trial_application_id" property="trialApplicationId" jdbcType="BIGINT" />
+		<result column="user_id" property="userId" jdbcType="BIGINT" />
+		<result column="parent_id" property="parentId" jdbcType="BIGINT" />
+		<result column="to_user_id" property="toUserId" jdbcType="BIGINT" />
+		<result column="content" property="content" jdbcType="VARCHAR" />
+		<result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
+		<result column="nickname" property="nickname" jdbcType="VARCHAR" />
+		<result column="toNickname" property="toNickname" jdbcType="VARCHAR" />
+	</resultMap>
+	
+	<sql id="getMyApplicationWhere">
+		<if test="userId!=null"> AND dta.user_id = #{userId}</if>											
+		<if test="type==1">	AND dta.is_public = 'N'	AND dt.end_time>NOW() AND dta.is_delete='N'</if>					<!--申请中 -->
+		<if test="type==2"> AND dta.is_public = 'Y' AND dta.is_delete='N'</if>										<!--申请成功 -->
+		<if test="type==3"> AND dta.is_public = 'N'	AND NOW()>=dt.end_time AND dta.is_delete='N'</if>					<!--申请失败 -->
+	</sql>
+
+	<!-- 查询指定条件和个数的用户列表 -->
+	 <select id="getTrialUserByPage" resultMap="ApplicationResultMapCus"	parameterType="java.lang.Object">
+		SELECT
+			dtu.*,
+			du.nickname,
+			du.head_img,
+			o.`status` order_status,
+			dtr.`status`  report_status
+		FROM
+			`diy_trial_application` dtu
+		INNER JOIN diy_user du ON dtu.user_id = du.id
+		LEFT JOIN diy_order o ON dtu.order_id = o.id
+		LEFT JOIN   diy_trial_report  dtr  on dtr.trial_application_id=dtu.id
+		WHERE  dtu.trial_id=#{trialId}
+		<if test="isPublic!=null">
+			AND dtu.is_public=#{isPublic}
+		</if>
+		ORDER BY
+			dtu.create_time DESC
+		LIMIT #{start},#{limit}
+	</select>
+	<!-- 查询指定试用活动的申请理由总数 -->
+	<select id="getTrialReasonCount" resultType="Integer"	parameterType="java.lang.Long">
+		SELECT  COUNT(dta.id)
+		FROM  diy_trial_application dta
+		WHERE dta.trial_id = #{trialId}
+		  AND dta.is_show_reason = 'Y'
+	</select>
+	<!-- 查询指定试用活动的申请理由列表 -->
+	 <select id="getTrialReasonByPage" resultType="java.util.Map"	parameterType="java.lang.Object">
+		SELECT
+			dtu.id,
+			dtu.create_time  createTime,
+			dtu.reason,
+			dtu.user_id userId,
+			du.nickname,
+			du.head_img  headImg
+		FROM
+			`diy_trial_application` dtu
+		INNER JOIN diy_user du ON dtu.user_id = du.id
+		WHERE  dtu.trial_id=#{trialId}
+		  AND  dtu.is_show_reason='Y'
+		ORDER BY
+			dtu.create_time DESC
+		LIMIT #{startItem},#{pageSize}
+	</select>
+	<!-- 获取指定试用申请理由的评论总数 -->
+	<select id="getTrialReasonCommentCount" resultType="Integer"	parameterType="java.lang.Long">
+		SELECT  COUNT(dtrc.id)
+		FROM  diy_trial_reason_comment dtrc
+		WHERE dtrc.trial_application_id = #{trialApplicationId}
+	</select>	
+	
+	<!-- 获取指定试用申请理由的评论列表 -->
+	<select id="getTrialReasonCommentByPage" resultType="java.util.Map"	parameterType="java.lang.Object">
+	SELECT 
+			dtrc.id,
+			dtrc.trial_application_id trialApplicationId,
+			du.nickname,
+			du.head_img headImg,
+      		u.nickname toNickname,
+<!--  		(SELECT u.nickname FROM diy_user u WHERE u.id=dtrc.user_id) nickname,
+			(SELECT u.head_Img FROM diy_user u WHERE u.id=dtrc.user_id) headImg,
+			(SELECT nickname FROM diy_user WHERE id=dtrc.to_user_id) toNickname, -->
+			dtrc.user_id userId,
+			dtrc.to_user_id toUserId,
+			dtrc.content,
+			dtrc.create_time createTime
+	 FROM diy_trial_reason_comment dtrc
+	 LEFT JOIN diy_user du ON du.id = dtrc.user_id
+	 LEFT JOIN diy_user u ON u.id = dtrc.to_user_id
+  	 WHERE dtrc.trial_application_id = #{trialApplicationId}
+	 ORDER BY dtrc.create_time DESC 
+	 LIMIT #{startItem},#{pageSize}
+	</select>
+	
+	<!-- 获取指定id的申请理由评论 -->
+	<select  id="getTrialReasonCommentById" resultMap="CommentResultMap" parameterType="java.lang.Long">
+ 		SELECT
+			dtrc.*, 
+			du.nickname,
+			u.nickname toNickname
+<!-- 		(SELECT nickname FROM  diy_user du WHERE du.id = dtrc.user_id) nickname,
+			(SELECT nickname FROM  diy_user du WHERE du.id = dtrc.to_user_id) toNickname-->
+		FROM
+			diy_trial_reason_comment dtrc
+		LEFT JOIN diy_user du ON du.id = dtrc.user_id
+	 	LEFT JOIN diy_user u ON u.id = dtrc.to_user_id
+		WHERE
+			dtrc.id =#{id}
+	</select>
+	
+	<!-- 获取指定id的申请记录-->
+	<select  id="selectTrialApplicationByCondition" resultMap="ApplicationResultMap" parameterType="java.lang.Object">
+		SELECT * FROM diy_trial_application  dta where 1=1
+		<if test="id!=null">
+			AND	dta.id=#{id}
+		</if>
+		<if test="trialId!=null">
+			AND	dta.trial_id=#{trialId}
+		</if>
+		<if test="mobile!=null">
+			AND	dta.mobile=#{mobile}
+		</if>
+		<if test="userId!=null">
+			AND	dta.user_id=#{userId}
+		</if>
+	</select>
+	
+	<!-- 获取指定类型的指定用户的申请总数 -->
+	<select  id="getMyApplicationCount" resultType="Integer" parameterType="java.lang.Object">
+		SELECT
+			count(*)
+		FROM
+			diy_trial_application dta
+		INNER JOIN diy_trial dt ON dta.trial_id = dt.id
+		WHERE 1 = 1
+		<include  refid="getMyApplicationWhere"/>
+	</select>
+	
+	<!-- 获取指定类型的指定用户的申请列表-->
+	<select  id="getMyApplicationByPage" resultMap="ApplicationResultMapCus" parameterType="java.lang.Object">
+		SELECT
+			dta.*, 
+			IFNULL(dt.pc_cover,dp.cover) AS pc_cover,
+			IFNULL(dt.m_cover,dp.cover) AS m_cover,
+			dt.start_time,
+			dt.end_time,
+			dt.trial_num,
+			dt.is_charge_deposit,
+			dt.product_id,
+			dp.`name` product_name,
+			dp.title,
+			dp.price,
+			dpu.id package_id,
+			dpu.deposit_price,
+			o.`status` order_status,
+			o.hbase_order_id,
+			dtr.id report_id,
+			dtr.`status` report_status
+		FROM
+			diy_trial_application dta
+		INNER JOIN diy_trial dt ON dta.trial_id = dt.id
+		INNER JOIN diy_product dp ON dp.id = dt.product_id
+		INNER JOIN diy_package_unit dpu ON dpu.product_id = dp.id
+		LEFT JOIN diy_order o ON o.id = dta.order_id
+		LEFT JOIN diy_trial_report dtr ON dtr.trial_id = dta.trial_id AND dtr.user_id = dta.user_id
+		WHERE 1 = 1
+		<include  refid="getMyApplicationWhere"/>
+		ORDER BY dta.create_time desc
+	</select>
+	
+	<!-- 获取指定用户的试用申请记录 -->
+	<select id="getApplicationListByUserId" parameterType="java.lang.Long" resultMap="ApplicationResultMap">
+		SELECT * FROM diy_trial_application WHERE user_id=#{userId}
+	</select>
+	
+	<!-- 批量更新指定试用申请的UserId -->
+	<update id="updateApplicationUserId" parameterType="Map">
+		UPDATE diy_trial_application
+		SET user_id = #{userId}
+		WHERE
+			id
+			<foreach collection="list" open="IN(" item="id" separator="," close=")">
+				#{id}
+			</foreach>
+	</update>
+	
+	<!-- 插入试用申请理由评论 -->
+	<insert id="insertTrialReasonComment" keyProperty="id" useGeneratedKeys="true" >
+		INSERT INTO `diy_trial_reason_comment`
+		<trim prefix="(" suffix=")" suffixOverrides="," >
+			`trial_application_id`,`user_id`, `to_user_id`,`content`,`parent_id`, `create_time`,
+		</trim>
+		VALUES
+		<trim prefix="(" suffix=")" suffixOverrides="," >
+			#{trialApplicationId}, #{userId}, #{toUserId}, #{content}, #{parentId}, NOW(),
+		</trim>
+	</insert>
+	
+	<!-- 插入试用申请记录 -->
+	<insert id="insertTrialApplication" keyProperty="id" useGeneratedKeys="true" >
+		INSERT INTO `diy_trial_application`
+		<trim prefix="(" suffix=")" suffixOverrides="," >
+			`trial_id`,`user_id`, `name`,`sex`,`mobile`, `reason`, `create_time`,
+		</trim>
+		VALUES
+		<trim prefix="(" suffix=")" suffixOverrides="," >
+			#{trialId}, #{userId}, #{name}, #{sex}, #{mobile},#{reason}, NOW(),
+		</trim>
+	</insert>
+	<!-- 更新试用申请信息 -->
+	<update id="updateTrialApplication">
+		UPDATE `diy_trial_application`
+		<set>
+			<if test="orderId != null">
+				`order_id` = #{orderId},
+			</if>
+			<if test="addressId != null">
+				`address_id` = #{addressId},
+			</if>
+			<if test="address != null">
+				`address` = #{address},
+			</if>
+			<if test="isDelete != null">
+				`is_delete` = #{isDelete}
+			</if>
+		</set>
+		<where>
+			`id` = #{id}
+		</where>
+	</update>
+</mapper>

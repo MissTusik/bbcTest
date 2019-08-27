@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.haier.diy.web.mapper.DiyTrialReportBackMapper">
+	<resultMap id="diyTrialReportBackMap" type="com.bcc.test.trial.domain.DiyTrialReport">
+		<id column="id" property="id" jdbcType="BIGINT" />
+		<result column="trial_id" property="trialId" jdbcType="BIGINT" />
+		<result column="trial_application_id" property="trialApplicationId" jdbcType="BIGINT" />
+		<result column="user_id" property="userId" jdbcType="BIGINT" />
+		<result column="cover" property="cover" jdbcType="VARCHAR" />
+		<result column="summary" property="summary" jdbcType="VARCHAR" />
+		<result column="content" property="content" jdbcType="VARCHAR" />
+		<result column="comprehensive_score" property="comprehensiveScore" jdbcType="INTEGER" />
+		<result column="function_score" property="functionScore" jdbcType="INTEGER" />
+		<result column="appearance_score" property="appearanceScore" jdbcType="INTEGER" />
+		<result column="performance_score" property="performanceScore" jdbcType="INTEGER" />
+		<result column="status" property="status" jdbcType="INTEGER" />
+		<result column="is_public" property="isPublic" jdbcType="VARCHAR" />
+		<result column="public_time" property="publicTime" jdbcType="TIMESTAMP" />
+		<result column="is_recommend" property="isRecommend" jdbcType="VARCHAR" />
+		<result column="like_num" property="likeNum" jdbcType="INTEGER" />
+		<result column="dislike_num" property="dislikeNum" jdbcType="INTEGER" />
+		<result column="comment_num" property="commentNum" jdbcType="INTEGER" />
+		<result column="is_show" property="isShow" jdbcType="VARCHAR" />
+		<result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
+		<result column="sort" property="sort" jdbcType="INTEGER" />
+		<result column="pc_url" property="pcUrl" jdbcType="VARCHAR" />
+		<result column="m_url" property="mUrl" jdbcType="VARCHAR" />
+	</resultMap>
+	<resultMap id="diyTrialReportSupperBackMap" type="com.bcc.test.trialBack.domain.DiyTrialReportSupper" extends="diyTrialReportBackMap">
+		<result column="nickname" property="nickname" jdbcType="VARCHAR" />
+		<result column="mobile" property="mobile" jdbcType="VARCHAR" />
+		<result column="hbase_order_id" property="hbaseOrderId" jdbcType="BIGINT" />
+		<result column="hbase_id" property="hbaseUserId" jdbcType="BIGINT" />
+		<result column="order_status" property="orderStatus" jdbcType="VARCHAR" />
+	</resultMap>	
+	<!-- 获取所有公示试用报告数量 -->
+	<select id="getPublicTrialReportCount"  resultType="Integer" parameterType="Long">
+		SELECT count(r.id) 
+		FROM diy_trial_report r 
+		INNER JOIN diy_trial_application dta ON r.trial_application_id=dta.id
+		INNER JOIN diy_trial dt ON r.trial_id = dt.id 
+		INNER JOIN diy_product dp ON dt.product_id = dp.id
+		INNER JOIN diy_user du ON r.user_id = du.id 
+		WHERE r.is_public='Y'
+		<if test="trialId!=null">
+			and r.trial_id=#{trialId}
+		</if>
+	</select>
+	
+	<!-- 分页获取所有公示试用报告列表 -->
+	<select id="getPublicTrialReportByPage" parameterType="java.lang.Object" resultType="Map">
+	  	SELECT
+			dtr.id,
+			dtr.sort,
+			dp.`name`,
+			du.nickname,
+			dta.`name` userName,
+			dtr.cover,
+			dtr.is_show isShow,
+			dtr.is_recommend isRecommend,
+			dtr.create_time createTime
+		FROM
+			diy_trial_report dtr
+	    INNER JOIN diy_trial_application dta ON dtr.trial_application_id=dta.id
+		INNER JOIN diy_trial dt ON dtr.trial_id = dt.id
+		INNER JOIN diy_product dp ON dt.product_id = dp.id
+		INNER JOIN diy_user du ON dtr.user_id = du.id
+		WHERE  dtr.is_public='Y'
+		ORDER BY dtr.create_time DESC
+		LIMIT #{startItem},#{pageSize}
+	</select>
+	
+	<!-- 获取指定试用报告的试用报告数量 -->
+	<select id="getTrialReportCount"   resultType="Integer"  parameterType="Long">
+		SELECT count(r.id) 
+		FROM diy_trial_report r  
+		INNER JOIN diy_trial_application dta ON r.trial_application_id=dta.id
+		INNER JOIN diy_user du ON r.user_id = du.id
+		WHERE	r.trial_id=#{trialId}
+	</select>
+	
+	<!-- 分页获取所有公示试用报告列表 -->
+	<select id="getTrialReportByPage" parameterType="java.lang.Object" resultType="Map">
+		SELECT
+			dtr.id,
+			dtr.trial_id trialId,
+			dtr.sort,
+			du.nickname,
+			dta.`name` userName,
+			dtr.cover,
+			dtr.`status`,
+			dtr.is_public isPublic,
+			dtr.create_time createTime,
+			dtr.pc_url pcUrl,
+			dtr.m_url mUrl
+		FROM
+			diy_trial_report dtr
+		INNER JOIN diy_trial_application dta ON dtr.trial_application_id=dta.id
+		INNER JOIN diy_user du ON dtr.user_id = du.id
+		WHERE  dtr.trial_id=#{trialId}
+		ORDER BY dtr.create_time DESC
+		LIMIT #{startItem},#{pageSize}
+	</select>
+	
+	<!--查询指定的试用报告信息 -->
+	<select id="selectTrialReportById" resultMap="diyTrialReportSupperBackMap"	parameterType="Long">
+		SELECT
+			dtr.id,
+			dtr.trial_id,
+  			du.nickname,
+  			du.hbase_id,
+  			o.hbase_order_id,
+			o.`status` order_status,
+  			dtu.mobile,
+			dtr.cover,
+			dtr.summary,
+			dtr.content,
+			dtr.comprehensive_score ,
+  			dtr.function_score   ,
+  			dtr.appearance_score ,
+  			dtr.performance_score ,
+  			dtr.`status`,
+  			dtr.create_time
+		FROM
+			diy_trial_report dtr
+		INNER JOIN diy_user du ON dtr.user_id = du.id
+		INNER JOIN diy_trial_application dtu on dtu.id=dtr.trial_application_id
+   		LEFT  JOIN diy_order  o on dtu.order_id=o.id
+		WHERE  dtr.id= #{id}
+	</select>
+	
+	<!--查询指定的试用报告信息列表 -->
+	<select id="selectTrialReportByIds" resultMap="diyTrialReportBackMap"	parameterType="java.util.List">
+		SELECT
+			dtr.*
+		FROM
+			diy_trial_report dtr
+		WHERE  dtr.id in
+		<foreach   collection="idsList"  item="id" separator="," open="(" close=")">
+		 	#{id}
+		 </foreach>
+	</select>
+	
+	
+	<!-- 更新试用报告信息 -->
+	<update id="updateDiyTrialReport">
+		UPDATE `diy_trial_report`
+		<set>
+			<if test="cover != null">
+				`cover` = #{cover},
+			</if>
+			<if test="status != null">
+				`status` = #{status},
+			</if>
+			<if test="isPublic != null">
+				`is_public` = #{isPublic},
+			</if>
+			<if test="publicTime != null">
+				`public_time` = #{publicTime},
+			</if>
+			<if test="isRecommend != null">
+				`is_recommend` = #{isRecommend},
+			</if>
+			<if test="isShow != null">
+				`is_show` = #{isShow},
+			</if>
+			<if test="sort != null">
+				`sort` = #{sort}
+			</if>
+			<if test="pcUrl != null">
+				`pc_url` = #{pcUrl},
+			</if>
+			<if test="mUrl != null">
+				`m_url` = #{mUrl}
+			</if>
+		</set>
+		<where>
+			`id` = #{id}
+		</where>
+	</update>
+	
+	<!-- 删除试用报告 -->
+	<delete id="deleteDiyTrialReport" parameterType="Long">
+		DELETE 	FROM `diy_trial_report`  WHERE `id` = #{id}
+	</delete>
+
+</mapper>

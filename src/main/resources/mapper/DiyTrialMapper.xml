@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.haier.diy.trial.mapper.DiyTrialMapper">
+	<resultMap id="BaseResultMap" type="com.bcc.test.trial.domain.DiyTrial">
+		<id column="id" property="id" jdbcType="BIGINT" />
+		<result column="product_id" property="productId" jdbcType="BIGINT" />
+		<result column="trial_num" property="trialNum" jdbcType="INTEGER" />
+		<result column="pc_cover" property="pcCover" jdbcType="VARCHAR" />
+		<result column="m_cover" property="mCover" jdbcType="VARCHAR" />
+		<result column="base" property="base" jdbcType="INTEGER" />
+		<result column="start_time" property="startTime" jdbcType="TIMESTAMP" />
+		<result column="preheat_end_time" property="preheatEndTime" jdbcType="TIMESTAMP" />
+		<result column="apply_end_time" property="applyEndTime" jdbcType="TIMESTAMP" />
+		<result column="end_time" property="endTime" jdbcType="TIMESTAMP" />
+		<result column="is_charge_deposit" property="isChargeDeposit" jdbcType="VARCHAR" />
+		<result column="rule" property="rule" jdbcType="VARCHAR" />
+		<result column="status" property="status" jdbcType="INTEGER" />
+		<result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
+		<result column="sort" property="sort" jdbcType="INTEGER" />
+	</resultMap>
+	<resultMap id="ResultMapCus" type="com.bcc.test.trial.domain.DiyTrialCus" extends="BaseResultMap">
+		<result column="name" property="name" jdbcType="VARCHAR" />
+		<result column="title" property="title" jdbcType="VARCHAR" />
+		<result column="product_pc_cover" property="productPcCover" jdbcType="VARCHAR" />
+		<result column="product_m_cover" property="productMCover" jdbcType="VARCHAR" />
+		<result column="price" property="price" jdbcType="DECIMAL" />
+		<!-- <result column="trial_user_num" property="trialUserNum" jdbcType="INTEGER" /> -->
+		<!-- <result column="ballot_user_num" property="ballotUserNum" jdbcType="INTEGER" /> -->
+		<!-- <result column="report_num" property="reportNum" jdbcType="INTEGER" /> -->
+		<!-- <result column="topic_num" property="topicNum" jdbcType="INTEGER" /> -->
+		<result column="is_collect" property="isCollect" jdbcType="INTEGER" />
+		<result column="is_apply" property="isApply" jdbcType="INTEGER" />
+		<association property="trialUserNum" column="id"   select="queryTrialUserNum"/>
+		<association property="ballotUserNum" column="id"   select="queryBallotUserNum"/>
+		<association property="reportNum" column="id"   select="queryReportNum"/>
+		<association property="topicNum" column="product_id"   select="queryTopicNum"/>
+		<collection property="trialDataItems" ofType="com.bcc.test.trial.domain.DiyTrialData">
+				<result column="data_id" property="id" jdbcType="BIGINT"/>
+				<result column="trial_id" property="trialId" jdbcType="BIGINT"/>
+				<result column="relation_id" property="relationId" jdbcType="BIGINT"/>
+				<result column="cover" property="cover" jdbcType="VARCHAR"/>
+				<result column="pro_name" property="proName" jdbcType="VARCHAR"/>
+				<result column="pro_price" property="proPrice" jdbcType="DECIMAL"/>
+				<result column="data_create_time" property="createTime" jdbcType="TIMESTAMP"/>
+		</collection>
+	</resultMap>
+	
+	<!-- 试用收藏映射map -->	
+	<resultMap id="CollectResultMap" type="com.bcc.test.trial.domain.DiyTrialCollect">
+		<id column="id" property="id" jdbcType="BIGINT" />
+		<result column="user_id" property="userId" jdbcType="BIGINT" />
+		<result column="trial_id" property="trialId" jdbcType="BIGINT" />
+		<result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
+	</resultMap>
+	
+	<!-- 试用收藏映射扩展map -->	
+	<resultMap id="CollectResultMapCus" type="com.bcc.test.trial.domain.DiyTrialCollectCus" extends="CollectResultMap">
+		<result column="name" property="name" jdbcType="VARCHAR" />
+		<result column="price" property="price" jdbcType="DECIMAL" />
+		<result column="pc_cover" property="pcCover" jdbcType="VARCHAR" />
+		<result column="m_cover" property="mCover" jdbcType="VARCHAR" />
+		<result column="create_time" property="startTime" jdbcType="TIMESTAMP" />
+		<result column="preheat_end_time" property="preheatEndTime" jdbcType="TIMESTAMP" />
+		<result column="apply_end_time" property="applyEndTime" jdbcType="TIMESTAMP" />
+		<result column="end_time" property="endTime" jdbcType="TIMESTAMP" />
+	</resultMap>
+	
+	
+	<!-- 获取试用产品数量 -->
+	<select id="getTrialCount"  resultType="Integer">
+		SELECT count(*) from diy_trial t  where t.`status`=1;
+	</select>
+	
+	<!-- 分页获取试用产品列表 -->
+	<select id="getTrialByPage" parameterType="java.lang.Object" resultMap="ResultMapCus">
+	  	SELECT
+			t.id,
+			t.product_id,
+			t.is_charge_deposit,
+			t.base,
+			t.trial_num,
+			t.start_time,
+			t.preheat_end_time,
+			t.apply_end_time,
+			t.end_time,
+ 			IFNULL(t.pc_cover,p.cover) AS pc_cover,
+ 			IFNULL(t.m_cover,p.cover) AS m_cover,
+ 			p.`name`,
+			p.title,
+      		p.price
+			<!-- (SELECT count(*) FROM	diy_trial_application u WHERE	u.trial_id = t.id) trial_user_num -->
+	 	FROM
+			diy_trial t
+	 	JOIN diy_product p ON t.product_id = p.id
+    	WHERE t.`status`=1  and  t.start_time<![CDATA[<=]]>NOW()
+	 	ORDER BY t.sort, t.create_time DESC
+		LIMIT #{startItem},#{pageSize}
+	</select>
+	
+	<!--查询指定的试用活动详细信息 -->
+	 <select id="selectTrialCusById" resultMap="ResultMapCus"	parameterType="java.lang.Object">
+		SELECT
+			dt.id,
+			dt.product_id,
+			dt.is_charge_deposit,
+			dt.base,
+			dt.trial_num,
+			dt.start_time,
+			dt.preheat_end_time,
+			dt.apply_end_time,
+			dt.end_time,
+ 			IFNULL(dt.pc_cover,p.cover) AS pc_cover,
+ 			IFNULL(dt.m_cover,p.cover) AS m_cover,
+ 			dt.rule,
+ 			p.`name`,
+			p.title,
+      		p.price,
+      		p.pc_cover product_pc_cover,
+      		p.m_cover product_m_cover,
+			<!-- (SELECT count(*) FROM	diy_trial_application u WHERE	u.trial_id =  dt.id) trial_user_num, -->
+			<!-- (SELECT count(*) FROM	diy_trial_application u WHERE	u.trial_id =  dt.id and u.is_public='Y') ballot_user_num, -->
+			<!-- (SELECT count(*) FROM   diy_trial_report r WHERE r.trial_id =  dt.id  and r.is_public='Y' and r.is_show='Y') report_num, -->
+			<!-- (SELECT count(dpt.id) FROM   diy_product_topic dpt WHERE dpt.product_id =  dt.product_id and dpt.parent_id=0) topic_num, -->
+			(SELECT count(dct.id) FROM   diy_trial_collect dct WHERE dct.trial_id =  dt.id and dct.user_id=#{userId}) is_collect,
+      		(SELECT count(dtu.id) FROM   diy_trial_application dtu WHERE dtu.trial_id =  dt.id and dtu.user_id=#{userId}) is_apply,
+			dtd.id data_id,
+			dtd.trial_id,
+			dtd.relation_id,
+			dtd.create_time data_create_time,
+			dtd.`name` pro_name,
+			dtd.price pro_price,
+			dtd.cover
+		FROM
+			diy_trial dt
+		JOIN diy_product p ON dt.product_id = p.id
+		LEFT JOIN (
+			SELECT d.*, dp.cover,dp.`name`,dp.price
+			FROM
+				diy_trial_data d
+			JOIN diy_product dp ON d.relation_id = dp.id
+			WHERE
+			d.trial_id = #{id}
+		) dtd ON dt.id = dtd.trial_id
+		WHERE  dt.id = #{id} and dt.`status`=1;
+	</select>
+	
+	<!--查询指定的试用活动基础信息 -->
+	 <select id="selectTrialById" resultMap="BaseResultMap"	parameterType="java.lang.Long">
+		SELECT
+			dt.*
+		FROM
+			diy_trial dt
+		WHERE  dt.id = #{id};
+	</select>
+	
+	<!--查询指定的试用活动的产品信息 -->
+	 <select id="getTrialProductInfo" resultType="Map"	parameterType="java.lang.Long">
+		SELECT
+			dt.id, 
+      		dt.product_id productId,
+			IFNULL(dt.pc_cover,dp.cover) as pcCover,
+			IFNULL(dt.m_cover,dp.cover) as mCover,
+      		dp.`name`,
+      		dp.title
+		FROM
+			diy_trial dt
+		INNER JOIN
+			diy_product dp
+    	ON dt.product_id=dp.id
+		WHERE  dt.id =#{trialId};
+	</select>
+	
+	<!-- 查询指定id的试用活动的申请人数 -->
+	<select id="queryTrialUserNum"  resultType="Integer">
+		SELECT count(*) FROM	diy_trial_application u WHERE	u.trial_id = #{id}
+	</select>
+		
+	<!-- 查询指定id的试用活动的中签人数 -->
+	<select id="queryBallotUserNum"  resultType="Integer">
+		SELECT count(*) FROM	diy_trial_application u WHERE	u.trial_id =  #{id} and u.is_public='Y'
+	</select>
+		
+	<!-- 查询指定id的试用活动的试用报告数 -->
+	<select id="queryReportNum"  resultType="Integer">
+		SELECT count(*) FROM   diy_trial_report r WHERE r.trial_id =  #{id}  and r.is_public='Y' and r.is_show='Y'
+	</select>
+	
+	<!-- 查询指定id的试用活动的试用报告数 -->
+	<select id="queryTopicNum"  resultType="Integer">
+		SELECT count(dpt.id) FROM   diy_product_topic dpt WHERE dpt.product_id = #{id} and dpt.parent_id=0
+	</select>
+		
+	<!-- 以下为试用活动收藏操作 -->
+	
+	<!-- 获取指定用户收藏试用活动数量 -->
+	<select id="getCollectCount"  resultType="Integer" parameterType="java.lang.Long">
+		SELECT count(*) from diy_trial_collect  dtc  where dtc.`user_id`=#{userId};
+	</select>
+	
+	<!-- 分页获取指定用户的试用活动收藏列表 -->	
+	<select id="selectCollectByPage"  resultMap="CollectResultMapCus" parameterType="java.lang.Object">
+		SELECT
+			dtc.*,
+			IFNULL(dt.pc_cover,dp.cover) AS pc_cover,
+			IFNULL(dt.m_cover,dp.cover) AS m_cover,
+			dt.start_time,
+			dt.preheat_end_time,
+			dt.apply_end_time,
+			dt.end_time,
+			dp.price,
+			dp.`name`
+		FROM
+			diy_trial_collect dtc
+		INNER JOIN diy_trial dt ON dtc.trial_id = dt.id
+		INNER JOIN diy_product dp ON dt.product_id = dp.id
+		WHERE
+			dtc.user_id = #{userId}
+		ORDER BY dtc.create_time DESC
+		LIMIT  #{startItem},#{pageSize}
+	</select>	
+	
+	<!-- 查询指定条件的试用活动收藏信息 -->
+	<select id="selectTrialCollectByFrom" resultMap="CollectResultMap"	parameterType="java.lang.Object">
+		SELECT
+			dtc.*
+		FROM
+			`diy_trial_collect` dtc
+		WHERE  dtc.trial_id=#{trialId}
+		AND    dtc.user_id=#{userId}
+	</select>
+	
+	<!-- 获取指定用户的试用搜藏记录 -->
+	<select id="getTrialCollectListByUserId" parameterType="java.lang.Long" resultType="Map">
+		SELECT id FROM diy_trial_collect WHERE user_id=#{userId}
+	</select>
+	
+	<!-- 插入试用活动收藏记录 -->
+	<insert id="insertTrialCollect" keyProperty="id" useGeneratedKeys="true" >
+		INSERT INTO `diy_trial_collect`
+		<trim prefix="(" suffix=")" suffixOverrides="," >
+			`user_id`, `trial_id`, `create_time`,
+		</trim>
+		VALUES
+		<trim prefix="(" suffix=")" suffixOverrides="," >
+			#{userId}, #{trialId}, NOW(),
+		</trim>
+	</insert>
+	
+	<!-- 删除试用活动收藏记录  -->
+	 <delete id="deleteTrialCollect">
+  		DELETE FROM diy_trial_collect WHERE user_id = #{userId} AND trial_id = #{trialId}
+  	</delete>
+  	
+  	<!-- 批量更新指定创意的UserId -->
+	<update id="updateTrialCollectUserId" parameterType="Map">
+		UPDATE diy_trial_collect
+		SET user_id = #{userId}
+		WHERE
+			id
+			<foreach collection="list" open="IN(" item="id" separator="," close=")">
+				#{id}
+			</foreach>
+	</update>
+	
+
+</mapper>
